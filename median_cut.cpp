@@ -1,37 +1,31 @@
-/* 
-    median_cut.cpp by Tobias Alexander Franke (tob@cyberhead.de) 2013
-    See http://www.tobias-franke.eu/?dev
-
-    To get this to run, you will need stb_image.c and stb_image_write.h:
-    http://nothings.org/stb_image.c
-    http://nothings.org/stb/stb_image_write.h
-
-    BSD License (http://www.opensource.org/licenses/bsd-license.php)
-
-    Copyright (c) 2013, Tobias Alexander Franke (tob@cyberhead.de)
-    All rights reserved.
-
-    Redistribution and use in source and binary forms, with or without modification,
-    are permitted provided that the following conditions are met:
-
-    * Redistributions of source code must retain the above copyright notice, this
-      list of conditions and the following disclaimer.
-
-    * Redistributions in binary form must reproduce the above copyright notice, this
-      list of conditions and the following disclaimer in the documentation and/or
-      other materials provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
-    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-    ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-*/
+/*
+ * median_cut
+ *
+ * Copyright (c) 2013 Tobias Alexander Franke
+ * http://www.tobias-franke.eu
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * To get this to run, you will need stb_image.c and stb_image_write.h:
+ * http://nothings.org/stb_image.c
+ * http://nothings.org/stb/stb_image_write.h
+ */
 
 #include <iostream>
 #include <vector>
@@ -60,7 +54,7 @@ float luminance(T r, T g, T b)
 
 /**
  * Summed Area Table
- * 
+ *
  * Create a luminance summed area table from an image.
  */
 class summed_area_table
@@ -80,7 +74,7 @@ public:
     template<typename T>
     void create_lum(T* rgb, int width, int height, int nc)
     {
-		assert(nc > 2);
+        assert(nc > 2);
 
         width_ = width; height_ = height;
 
@@ -97,7 +91,7 @@ public:
             T b = rgb[i*nc + 2];
 
             float ixy = luminance(r,g,b);
-            
+
             sat_[i] = ixy + I(x-1, y) + I(x, y-1) - I(x-1, y-1);
         }
     }
@@ -106,10 +100,10 @@ public:
     int height() const { return height_; }
 
     /**
-	 * Returns the sum of a region defined by A,B,C,D.
-	 *
+     * Returns the sum of a region defined by A,B,C,D.
+     *
      * A----B
-     * |    |  sum = C+A-B-D 
+     * |    |  sum = C+A-B-D
      * D----C
      */
     int sum(int ax, int ay, int bx, int by, int cx, int cy, int dx, int dy) const
@@ -125,17 +119,17 @@ struct sat_region
 {
     int x_, y_, w_, h_;
     float sum_;
-	const summed_area_table* sat_;
+    const summed_area_table* sat_;
 
     void create(int x, int y, int w, int h, const summed_area_table* sat, float init_sum = -1)
     {
-		x_ = x; y_ = y; w_ = w; h_ = h; sum_ = init_sum; sat_ = sat;
+        x_ = x; y_ = y; w_ = w; h_ = h; sum_ = init_sum; sat_ = sat;
 
-		if (sum_ < 0)
-			sum_ = sat_->sum(x,       y, 
-							 x+(w-1), y, 
-							 x+(w-1), y+(h-1),
-							 x,       y+(h-1));
+        if (sum_ < 0)
+            sum_ = sat_->sum(x,       y,
+                             x+(w-1), y,
+                             x+(w-1), y+(h-1),
+                             x,       y+(h-1));
     }
 
     void split_w(sat_region& A) const
@@ -150,9 +144,9 @@ struct sat_region
         }
     }
 
-	/**
-	 * Split region horizontally into subregions A and B.
-	 */
+    /**
+     * Split region horizontally into subregions A and B.
+     */
     void split_w(sat_region& A, sat_region& B) const
     {
         split_w(A);
@@ -171,9 +165,9 @@ struct sat_region
         }
     }
 
-	/**
-	 * Split region vertically into subregions A and B.
-	 */
+    /**
+     * Split region vertically into subregions A and B.
+     */
     void split_h(sat_region& A, sat_region& B) const
     {
         split_h(A);
@@ -185,19 +179,19 @@ struct sat_region
         float2 c;
 
         sat_region A;
-            
+
         split_w(A);
         c.x = A.x_ + (A.w_-1);
 
         split_h(A);
         c.y = A.y_ + (A.h_-1);
-            
+
         return c;
     }
 };
 
 /**
- * Recursively split a region r and append new subregions 
+ * Recursively split a region r and append new subregions
  * A and B to regions vector when at an end.
  */
 void split_recursive(const sat_region& r, size_t n, std::vector<sat_region>& regions)
@@ -261,14 +255,14 @@ void draw(float* rgba, int width, int height, float2 l)
     static int i = 0;
 
     int ci;
-    
+
     int m = width*height*4;
 
-	for (int x = -1; x < 2; ++x)
-	{
-		ci = std::min<int>((l.y*width + l.x+x)*4, m);
-		red(rgba, ci, m);
-	}
+    for (int x = -1; x < 2; ++x)
+    {
+        ci = std::min<int>((l.y*width + l.x+x)*4, m);
+        red(rgba, ci, m);
+    }
 
     ci = std::min<int>(((l.y+1)*width + l.x)*4, m);
     red(rgba, ci, m);
@@ -282,20 +276,20 @@ void draw(float* rgba, int width, int height, float2 l)
  */
 void create_lights(const std::vector<sat_region>& regions, std::vector<float2>& lights)
 {
-	// set light at centroid
+    // set light at centroid
     for (size_t i = 0; i < regions.size(); ++i)
         lights.push_back(regions[i].centroid());
 }
 
 int main(int argc, char** argv)
 {
-	if (argc < 2)
-	{
-		std::cerr << "Use " << argv[0] << " filename" << std::endl;
-		return 1;
-	}
+    if (argc < 2)
+    {
+        std::cerr << "Use " << argv[0] << " filename" << std::endl;
+        return 1;
+    }
 
-	// load image
+    // load image
     int width, height, nc;
     float* rgba = stbi_loadf(argv[1], &width, &height, &nc, 4);
     if (stbi_failure_reason())
@@ -304,27 +298,27 @@ int main(int argc, char** argv)
         return 1;
     }
 
-	// create summed area table of luminance image
-	summed_area_table lum_sat;
+    // create summed area table of luminance image
+    summed_area_table lum_sat;
     lum_sat.create_lum(rgba, width, height, 4);
 
-	// apply median cut
-	std::vector<sat_region> regions;
+    // apply median cut
+    std::vector<sat_region> regions;
     median_cut(lum_sat, 9, regions); // max 2^n cuts
 
-	// create 2d positions from regions
-	std::vector<float2> lights;
-	create_lights(regions, lights);
+    // create 2d positions from regions
+    std::vector<float2> lights;
+    create_lights(regions, lights);
 
-	// draw a marker into image for each position
-	size_t i = 0;
+    // draw a marker into image for each position
+    size_t i = 0;
     for (auto l = lights.begin(); l != lights.end(); ++l)
-	{
-		std::cout << "Light " << i++ << ": (" << l->x << ", " << l->y << ")" << std::endl;
+    {
+        std::cout << "Light " << i++ << ": (" << l->x << ", " << l->y << ")" << std::endl;
         draw(rgba, width, height, *l);
-	}
+    }
 
-	// save image with marked samples
+    // save image with marked samples
     std::vector<unsigned char> conv;
     conv.resize(width*height*4);
 
@@ -333,5 +327,5 @@ int main(int argc, char** argv)
 
     stbi_write_bmp("test.bmp", width, height, 4, &conv[0]);
 
-	return 0;
+    return 0;
 }
