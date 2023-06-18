@@ -90,6 +90,8 @@ public:
             T g = rgb[i*nc + 1];
             T b = rgb[i*nc + 2];
 
+            // - TODO: Weight by cos(phi) as described in the paper.
+            // - TODO: Likewise, weight w in split_recursive().
             float ixy = luminance(r,g,b);
 
             sat_[i] = ixy + I(x-1, y) + I(x, y-1) - I(x-1, y-1);
@@ -102,13 +104,26 @@ public:
     /**
      * Returns the sum of a region defined by A,B,C,D.
      *
-     * A----B
-     * |    |  sum = C+A-B-D
-     * D----C
+     * a-----b
+     * |A----B
+     * ||....| sum(ABCD) = (C+a)-(b+d)
+     * dD----C
      */
     int sum(int ax, int ay, int bx, int by, int cx, int cy, int dx, int dy) const
     {
-        return I(cx, cy) + I(ax, ay) - I(bx, by) - I(dx, dy);
+        // - Example:          sat
+        //                    +---+---+---+---+
+        //    ixy             | 0 | 0 | 0 | 0 |
+        //   +---+---+---+    +---+---+---+---+
+        //   | 1 | 2 | 3 |    | 0 | 1 | 3 | 6 |
+        //   +---+---+---+    +---+---+---+---+
+        //   | 4 | 5 | 6 | => | 0 | 5 |12 |21 |
+        //   +---+---+---+    +---+---+---+---+
+        //   | 7 | 8 | 9 |    | 0 |12 |27 |45 |
+        //   +---+---+---+    +---+---+---+---+
+        //   sum=1+...+9=45   sum=45+0-0-0
+        //   sum=5+6+8+9=28   sum=45+1-12-6=28
+        return I(cx, cy) + I(ax-1, ay-1) - I(bx, by-1) - I(dx-1, dy);
     }
 };
 
@@ -134,7 +149,8 @@ struct sat_region
 
     void split_w(sat_region& A) const
     {
-        for (size_t w = 1; w <= w_; ++w)
+        // Aw IN [1..rw-1].
+        for (size_t w = 1; w < w_; ++w)
         {
             A.create(x_, y_, w, h_, sat_);
 
@@ -155,7 +171,8 @@ struct sat_region
 
     void split_h(sat_region& A) const
     {
-        for (size_t h = 1; h <= h_; ++h)
+        // Ah IN [1..rh-1].
+        for (size_t h = 1; h < h_; ++h)
         {
             A.create(x_, y_, w_, h, sat_);
 
